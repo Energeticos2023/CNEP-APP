@@ -1,0 +1,37 @@
+/* Registro compartido de la web y la app. Sin claves privadas. */
+(()=>{
+ const API='https://ihwxxnhonvcsofwuotcy.supabase.co/functions/v1/cnep-membership';
+ const root=document.getElementById('registroRapido');if(!root)return;
+ const regions=['Amazonas','Áncash','Apurímac','Arequipa','Ayacucho','Cajamarca','Callao','Cusco','Huancavelica','Huánuco','Ica','Junín','La Libertad','Lambayeque','Lima','Loreto','Madre de Dios','Moquegua','Pasco','Piura','Puno','San Martín','Tacna','Tumbes','Ucayali'];
+ const profiles={'Ingeniero':'Ingeniero(a) electricista / mecánico electricista','Titulado':'Técnico(a) electricista titulado(a)','Bachiller':'Bachiller o egresado(a)','Empírico':'Electricista con experiencia práctica','Estudiante':'Estudiante de electricidad o ingeniería','Empresa':'Empresa o emprendimiento del sector eléctrico'};
+ const specs=['Instalaciones eléctricas domiciliarias','Instalaciones eléctricas comerciales','Instalaciones eléctricas industriales','Sistemas fotovoltaicos y energías renovables','Domótica','Puesta a tierra','Redes de baja, media y alta tensión','Automatización y PLC','Sistemas de bombeo','Videovigilancia','Cercos eléctricos','Cableado estructurado','Mantenimiento eléctrico','Diseño, supervisión y expedientes técnicos','Seguridad eléctrica','Otra especialidad'];
+ const option=(v,label=v)=>`<option value="${v}">${label}</option>`;
+ root.innerHTML=`<form id="quickForm" class="quick-form"><h3>Inscripción rápida y gratuita</h3><p>Completa tus datos. Tu solicitud quedará guardada para que coordinación la valide.</p><div class="quick-grid"><label>Nombres y apellidos<input name="nombre" autocomplete="name" required minlength="5" maxlength="120"></label><label>Celular / WhatsApp<input name="celular" autocomplete="tel-national" type="tel" inputmode="numeric" pattern="9[0-9]{8}" maxlength="9" placeholder="9 dígitos, sin +51" required></label><label>Región<select name="region" required><option value="">Selecciona tu región</option>${regions.map(v=>option(v)).join('')}</select></label><label>Provincia o ciudad<input name="ciudad" autocomplete="address-level2" minlength="2" maxlength="100" required></label><label>Tu perfil<select name="nivel" required><option value="">Selecciona tu perfil</option>${Object.entries(profiles).map(([v,l])=>option(v,l)).join('')}</select></label><label>Especialidad principal<select name="especialidad" required><option value="">Selecciona tu especialidad</option>${specs.map(v=>option(v)).join('')}</select></label><label>Años de experiencia (opcional)<select name="experiencia"><option value="">Prefiero indicarlo después</option>${['Estoy estudiando','Menos de 1 año','1 a 3 años','4 a 7 años','8 a 15 años','Más de 15 años'].map(v=>option(v)).join('')}</select></label><label>Correo electrónico (opcional)<input name="correo" autocomplete="email" type="email" maxlength="180"></label></div><div class="quick-trap" aria-hidden="true"><label>Deja este campo vacío<input name="website" tabindex="-1" autocomplete="off"></label></div><label class="quick-check"><input name="consentimiento" type="checkbox" required><span>Confirmo que los datos son verdaderos y autorizo a CNEP a guardarlos y contactarme para gestionar mi membresía.</span></label><label class="quick-check"><input name="publicar" type="checkbox"><span>Cuando me acepten, quiero aparecer en el directorio público con mi nombre, perfil, región, ciudad y especialidad. Mi teléfono y correo serán privados.</span></label><button type="submit" class="quick-submit">Enviar mi inscripción</button><p class="quick-status" id="quickStatus" role="status" aria-live="polite"></p><p class="quick-note">Tu membresía se activa después de la aprobación. No necesitas enviar un mensaje por WhatsApp ni instalar la app. Para consultar o retirar tus datos: <a href="mailto:tecnicos.electricistas.del.peru@gmail.com">contacta a coordinación</a>.</p></form><section id="quickSuccess" class="quick-form" hidden tabindex="-1"><span class="quick-kicker">Solicitud recibida</span><h3>¡Gracias por dar el primer paso!</h3><p>Tu envío quedó registrado. Si ya tenías una solicitud, conservamos la anterior. Coordinación revisará tus datos y podrá contactarte por el celular que indicaste.</p><p>Cuando te acepten, tu membresía quedará activa. Si autorizaste publicar tu perfil, aparecerá automáticamente en el directorio.</p><a class="quick-link" href="https://energeticos2023.github.io/cneperu/#nuestra-comunidad">Conocer la comunidad</a></section>`;
+ // Los accesos flotantes no deben tapar el consentimiento o el botón de envío.
+ if('IntersectionObserver' in window)new IntersectionObserver(entries=>document.body.classList.toggle('cnep-register-active',entries.some(entry=>entry.isIntersecting)),{threshold:0}).observe(root);
+ const form=document.getElementById('quickForm'),status=document.getElementById('quickStatus'),button=form.querySelector('button[type=submit]');
+ let sending=false,requestId=crypto.randomUUID();
+ if(new URLSearchParams(location.search).get('perfil')==='ingeniero')form.elements.nivel.value='Ingeniero';
+ document.querySelectorAll('.engineer-entry').forEach(a=>a.addEventListener('click',()=>form.elements.nivel.value='Ingeniero'));
+ document.querySelectorAll('.nivel-card').forEach(card=>card.addEventListener('click',()=>{form.elements.nivel.value=card.dataset.nivel==='Bachiller / Egresado'?'Bachiller':card.dataset.nivel;root.scrollIntoView({behavior:'smooth'});}));
+ form.elements.celular.addEventListener('input',e=>e.target.value=e.target.value.replace(/\D/g,'').slice(0,9));
+ // Un único ID por intento, incluso tras recargar si el navegador permite guardar estado.
+ const fingerprint=()=>[...new FormData(form)].filter(([k])=>k!=='website').map(([k,v])=>[k,String(v).trim()]);
+ try{const pending=JSON.parse(sessionStorage.getItem('cnep-pending')||'null');if(pending&&pending.id)requestId=pending.id;}catch{}
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();if(sending||!form.reportValidity())return;
+  sending=true;button.disabled=true;button.textContent='Guardando inscripción…';status.textContent='';
+  const f=new FormData(form),data=Object.fromEntries(f.entries());
+  data.nombre=data.nombre.trim();data.ciudad=data.ciudad.trim();data.correo=data.correo.trim();data.perfil=profiles[data.nivel];data.publicar=f.has('publicar');data.consentimiento=f.has('consentimiento');data.source=root.dataset.source||'web';
+  const snapshot=JSON.stringify(fingerprint());
+  try{const p=JSON.parse(sessionStorage.getItem('cnep-pending')||'null');if(p&&p.snapshot!==snapshot)requestId=crypto.randomUUID();sessionStorage.setItem('cnep-pending',JSON.stringify({id:requestId,snapshot}));}catch{}
+  data.id=requestId;
+  try{
+   const response=await fetch(API+'/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(20000)});
+   const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||'No pudimos confirmar el registro.');
+   try{sessionStorage.removeItem('cnep-pending');localStorage.removeItem('cnep-borrador');}catch{}
+   form.reset();form.hidden=true;document.getElementById('quickSuccess').hidden=false;document.getElementById('quickSuccess').focus();
+  }catch(error){status.textContent=(error.name==='TimeoutError'||error.name==='TypeError')?'No pudimos confirmar el envío. Comprueba tu conexión y vuelve a intentar; evitaremos duplicar la solicitud.':error.message;}
+  finally{sending=false;button.disabled=false;button.textContent='Enviar mi inscripción';}
+ });
+})();

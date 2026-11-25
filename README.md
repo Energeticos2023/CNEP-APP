@@ -24,4 +24,8 @@ Abra el enlace en Safari, pulse **Compartir**, elija **Agregar a inicio** y conf
 - WhatsApp receptor: 934 608 162
 - Correo: tecnicos.electricistas.del.peru@gmail.com
 
-El formulario no necesita servidor: prepara la solicitud y la envía mediante WhatsApp.
+El formulario guarda las solicitudes directamente en Supabase como pendientes. No se necesita enviar un mensaje por WhatsApp. Coordinación valida desde https://energeticos2023.github.io/cneperu/admin.html.
+
+La membresía aceptada se refleja automáticamente en el directorio de CNEP si el solicitante autorizó publicar su perfil. Se utiliza la misma base que la web principal.
+
+Publicar también membership.css, registration.js y app.js. No colocar claves privadas ni enlaces de activación en este repositorio.
